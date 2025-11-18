@@ -10,64 +10,176 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Program {
+// ============================================================================
+// CAMPAIGNS - Group and organize multiple programs
+// ============================================================================
+
+model Campaign {
   id              String            @id @default(uuid())
   name            String
-  type            ProgramType       // referral or affiliate
-  configJson      Json              // Stores rules: { percentage?: number, fixedBounty?: number, tiers?: Array }
+  description     String?
+  status          CampaignStatus    @default(ACTIVE)
+  startDate       DateTime?
+  endDate         DateTime?
+  metadata        Json?             // Flexible metadata
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
+  programs        Program[]
+  tags            Tag[]             @relation("CampaignTags")
+
+  @@map("campaigns")
+}
+
+// ============================================================================
+// PROGRAMS - Referral/Affiliate programs with enhanced fields
+// ============================================================================
+
+model Program {
+  id              String            @id @default(uuid())
+  campaignId      String?
+  name            String
+  description     String?
+  type            ProgramType
+  status          ProgramStatus     @default(ACTIVE)
+  configJson      Json              // Payout rules: { percentage?, fixedBounty?, tiers? }
+  terms           String?           // Terms and conditions
+  metadata        Json?             // Flexible metadata
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  campaign        Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   partners        Partner[]
   conversionEvents ConversionEvent[]
+  analytics       ProgramAnalytics[]
+  tags            Tag[]             @relation("ProgramTags")
+  notes           Note[]            @relation("ProgramNotes")
 
   @@map("programs")
 }
 
+// ============================================================================
+// PARTNER TIERS - Tiered partner levels with different benefits
+// ============================================================================
+
+model PartnerTier {
+  id              String            @id @default(uuid())
+  name            String
+  level           Int               @unique // 1, 2, 3, etc.
+  benefits        Json              // Description of benefits
+  requirements    Json              // Requirements to reach this tier
+  bonusPercentage Float             @default(0) // Additional bonus on top of base commission
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  partners        Partner[]
+
+  @@map("partner_tiers")
+}
+
+// ============================================================================
+// PARTNERS - Enhanced with tier, status, and metadata
+// ============================================================================
+
 model Partner {
   id              String            @id @default(uuid())
   programId       String
+  tierId          String?
   name            String
   contactEmail    String
-  payoutMethodJson Json             // Stores payout details: { type: 'stripe|paypal|bank', accountId: string, ... }
+  status          PartnerStatus     @default(ACTIVE)
+  payoutMethodJson Json             // Payout details
+  metadata        Json?             // Flexible metadata
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
   program         Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  tier            PartnerTier?      @relation(fields: [tierId], references: [id], onDelete: SetNull)
   referralLinks   ReferralLink[]
   conversionEvents ConversionEvent[]
   payouts         Payout[]
+  apiKeys         PartnerApiKey[]
+  notes           Note[]            @relation("PartnerNotes")
+  tags            Tag[]             @relation("PartnerTags")
 
   @@map("partners")
 }
+
+// ============================================================================
+// REFERRAL LINKS - Enhanced with metadata and tracking
+// ============================================================================
 
 model ReferralLink {
   id              String            @id @default(uuid())
   partnerId       String
   code            String            @unique
   urlSlug         String            @unique
+  clickCount      Int               @default(0) // Track clicks
+  status          ReferralLinkStatus @default(ACTIVE)
+  expiresAt       DateTime?
+  metadata        Json?
   createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   partner         Partner           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  attributions    ConversionAttribution[]
 
   @@map("referral_links")
 }
+
+// ============================================================================
+// CONVERSION EVENTS - Enhanced with attribution and status
+// ============================================================================
 
 model ConversionEvent {
   id              String            @id @default(uuid())
   programId       String
   partnerId       String
-  referredUserId  String?           // Optional user identifier
+  referredUserId  String?
   amount          Float
   currency        String            @default("USD")
+  status          ConversionStatus  @default(PENDING)
   occurredAt      DateTime          @default(now())
-  metaJson        Json?             // Additional metadata about the conversion
+  metaJson        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   program         Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
   partner         Partner           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  attribution     ConversionAttribution?
 
   @@map("conversion_events")
 }
+
+// ============================================================================
+// CONVERSION ATTRIBUTION - Detailed attribution tracking
+// ============================================================================
+
+model ConversionAttribution {
+  id              String            @id @default(uuid())
+  conversionId    String            @unique
+  referralLinkId  String
+  sourceUrl       String?           // Where they came from
+  landingUrl      String?           // Where they landed
+  ipAddress       String?
+  userAgent       String?
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+  utmContent      String?
+  utmTerm         String?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+
+  conversion      ConversionEvent   @relation(fields: [conversionId], references: [id], onDelete: Cascade)
+  referralLink    ReferralLink      @relation(fields: [referralLinkId], references: [id], onDelete: Cascade)
+
+  @@map("conversion_attributions")
+}
+
+// ============================================================================
+// PAYOUTS - Enhanced with metadata and processing info
+// ============================================================================
 
 model Payout {
   id              String            @id @default(uuid())
@@ -77,6 +189,10 @@ model Payout {
   amount          Float
   currency        String            @default("USD")
   status          PayoutStatus      @default(PENDING)
+  processingNote  String?
+  processedAt     DateTime?
+  transactionId   String?           // External payment transaction ID
+  metadata        Json?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -85,9 +201,205 @@ model Payout {
   @@map("payouts")
 }
 
+// ============================================================================
+// PROGRAM ANALYTICS - Aggregated stats per program
+// ============================================================================
+
+model ProgramAnalytics {
+  id              String            @id @default(uuid())
+  programId       String
+  date            DateTime          // Date for this analytics snapshot
+  totalPartners   Int               @default(0)
+  activePartners  Int               @default(0)
+  totalConversions Int              @default(0)
+  totalRevenue    Float             @default(0)
+  totalCommission Float             @default(0)
+  avgConversionValue Float          @default(0)
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  program         Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, date])
+  @@map("program_analytics")
+}
+
+// ============================================================================
+// ACTIVITY LOGS - Audit trail for all important actions
+// ============================================================================
+
+model ActivityLog {
+  id              String            @id @default(uuid())
+  entityType      String            // e.g., "Program", "Partner", "Payout"
+  entityId        String            // ID of the entity
+  action          String            // e.g., "created", "updated", "deleted"
+  actorType       String?           // e.g., "user", "system", "api"
+  actorId         String?           // ID of who performed the action
+  changes         Json?             // What changed (before/after)
+  metadata        Json?
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime          @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+// ============================================================================
+// WEBHOOKS - External webhook subscriptions
+// ============================================================================
+
+model Webhook {
+  id              String            @id @default(uuid())
+  name            String
+  url             String
+  events          String[]          // Array of event types to subscribe to
+  status          WebhookStatus     @default(ACTIVE)
+  secret          String?           // For signing webhook payloads
+  retryCount      Int               @default(3)
+  timeout         Int               @default(30) // Seconds
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  deliveries      WebhookDelivery[]
+
+  @@map("webhooks")
+}
+
+model WebhookDelivery {
+  id              String            @id @default(uuid())
+  webhookId       String
+  eventType       String
+  payload         Json
+  status          WebhookDeliveryStatus @default(PENDING)
+  attempts        Int               @default(0)
+  lastAttemptAt   DateTime?
+  responseStatus  Int?
+  responseBody    String?
+  errorMessage    String?
+  createdAt       DateTime          @default(now())
+  completedAt     DateTime?
+
+  webhook         Webhook           @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([status])
+  @@map("webhook_deliveries")
+}
+
+// ============================================================================
+// PARTNER API KEYS - For partner self-service API access
+// ============================================================================
+
+model PartnerApiKey {
+  id              String            @id @default(uuid())
+  partnerId       String
+  name            String            // Friendly name for the key
+  key             String            @unique
+  status          ApiKeyStatus      @default(ACTIVE)
+  permissions     String[]          // Array of permissions
+  lastUsedAt      DateTime?
+  expiresAt       DateTime?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  partner         Partner           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@map("partner_api_keys")
+}
+
+// ============================================================================
+// NOTES - Admin notes on partners, programs, etc.
+// ============================================================================
+
+model Note {
+  id              String            @id @default(uuid())
+  entityType      String            // "Program", "Partner", etc.
+  entityId        String
+  content         String
+  authorType      String?           // "user", "system"
+  authorId        String?
+  isInternal      Boolean           @default(true) // Internal notes vs. visible to partner
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Polymorphic relations
+  program         Program?          @relation("ProgramNotes", fields: [entityId], references: [id], onDelete: Cascade, map: "notes_program_fk")
+  partner         Partner?          @relation("PartnerNotes", fields: [entityId], references: [id], onDelete: Cascade, map: "notes_partner_fk")
+
+  @@index([entityType, entityId])
+  @@map("notes")
+}
+
+// ============================================================================
+// TAGS - Flexible tagging system
+// ============================================================================
+
+model Tag {
+  id              String            @id @default(uuid())
+  name            String            @unique
+  color           String?
+  description     String?
+  entityType      String            // "Program", "Partner", "Campaign"
+  entityId        String
+  createdAt       DateTime          @default(now())
+
+  // Polymorphic relations
+  campaigns       Campaign[]        @relation("CampaignTags")
+  programs        Program[]         @relation("ProgramTags")
+  partners        Partner[]         @relation("PartnerTags")
+
+  @@index([entityType, entityId])
+  @@map("tags")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
 enum ProgramType {
   REFERRAL
   AFFILIATE
+}
+
+enum ProgramStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum PartnerStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum ReferralLinkStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+}
+
+enum ConversionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVERSED
 }
 
 enum PayoutStatus {
@@ -95,4 +407,24 @@ enum PayoutStatus {
   PROCESSING
   PAID
   FAILED
+  CANCELLED
+}
+
+enum WebhookStatus {
+  ACTIVE
+  PAUSED
+  FAILED
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  RETRYING
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
 }

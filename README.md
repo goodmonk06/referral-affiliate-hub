@@ -1,151 +1,161 @@
 # Referral & Affiliate Hub
 
-A complete referral and affiliate management system built with NestJS, Prisma, PostgreSQL, and Next.js. Track referrals, manage conversions, and calculate payouts with configurable rules.
+A production-ready referral and affiliate management system with complete vertical slice implementation, Docker support, and comprehensive testing.
 
-## Features
+## 🎯 Overview
 
-- **Referral & Affiliate Programs**: Create and manage multiple programs with different payout structures
-- **Partner Management**: Onboard partners with custom payout methods
-- **Referral Link Tracking**: Generate unique referral codes and URL slugs
-- **Conversion Tracking**: Record and track conversions with detailed metadata
-- **Automated Payout Calculation**: Support for percentage, fixed bounty, and tier-based payouts
-- **Admin Dashboard**: Full-featured UI for managing programs, partners, and payouts
-- **REST API**: Complete API with Swagger documentation
+This system enables businesses to:
+- Create and manage referral/affiliate programs with flexible payout structures
+- Track conversions through unique referral codes and URLs
+- Automatically calculate payouts based on configurable rules
+- Manage partners and their payment methods
+- Monitor program performance through an admin dashboard
 
-## Tech Stack
+**Phase 2 Status**: ✅ Complete vertical slice with Docker, testing, and seed data
+
+## 🛠️ Tech Stack
 
 - **Backend**: NestJS + TypeScript
 - **Database**: PostgreSQL with Prisma ORM
-- **Frontend**: Next.js 14 with App Router + TypeScript + Tailwind CSS
+- **Frontend**: Next.js 14 (App Router) + TypeScript + Tailwind CSS
+- **Testing**: Vitest
 - **API Documentation**: Swagger/OpenAPI
+- **Containerization**: Docker + Docker Compose
 
-## Project Structure
+## 📊 Domain Model
+
+### Core Entities
 
 ```
-referral-affiliate-hub/
-├── backend/           # NestJS backend API
-│   ├── prisma/        # Database schema and migrations
-│   └── src/           # Source code
-│       ├── programs/     # Program management
-│       ├── partners/     # Partner management
-│       ├── referral-links/ # Referral link management
-│       ├── conversions/  # Conversion tracking
-│       ├── payouts/      # Payout calculation
-│       └── tracking/     # Attribution and conversion API
-└── frontend/          # Next.js admin dashboard
-    └── src/
-        ├── app/       # Pages and routes
-        └── lib/       # API client
+Program (1) ─→ (N) Partner ─→ (N) ReferralLink
+   │                 │
+   │                 │
+   └──→ (N) ConversionEvent
+                     │
+          Partner ←──┘
+             │
+             └──→ (N) Payout
 ```
 
-## Database Schema
+**Program**: Referral/Affiliate programs with payout configuration
+- `configJson`: Percentage, fixed bounty, or tiered rules
 
-### Program
-- Stores referral/affiliate program information
-- Configurable payout rules (percentage, fixed bounty, tiers)
+**Partner**: Organizations/individuals enrolled in programs
+- `payoutMethodJson`: Stripe, PayPal, or bank transfer details
 
-### Partner
-- Partners enrolled in programs
-- Payout method configuration (Stripe, PayPal, bank transfer)
+**ReferralLink**: Unique tracking codes and URL slugs
 
-### ReferralLink
-- Unique referral codes and URL slugs
-- Linked to specific partners
+**ConversionEvent**: Successful conversions with amount and metadata
 
-### ConversionEvent
-- Tracks successful conversions
-- Stores conversion amount and metadata
+**Payout**: Calculated payouts for specific time periods with status tracking
 
-### Payout
-- Calculated payouts for specific time periods
-- Status tracking (PENDING, PROCESSING, PAID, FAILED)
+## 🚀 Getting Started
 
-## Getting Started
+### Requirements
 
-### Prerequisites
+- Docker & Docker Compose (recommended)
+- OR: Node.js 18+, npm 9+, PostgreSQL 15+
 
-- Node.js 18+ and npm
-- PostgreSQL database
-- Git
+### Quick Start with Docker (Recommended)
 
-### Backend Setup
-
-1. Navigate to the backend directory:
+1. **Clone the repository**
 ```bash
-cd backend
+git clone <repository-url>
+cd referral-affiliate-hub
 ```
 
-2. Install dependencies:
+2. **Start the entire stack**
 ```bash
-npm install
+docker compose up -d
 ```
 
-3. Configure environment variables:
+This will:
+- Start PostgreSQL database
+- Run database migrations
+- Seed demo data
+- Start backend API on `http://localhost:3001`
+- Start frontend dashboard on `http://localhost:3000`
+
+3. **Access the application**
+- Frontend: http://localhost:3000
+- API: http://localhost:3001
+- API Docs: http://localhost:3001/api
+
+4. **View logs**
 ```bash
-cp .env.example .env
+docker compose logs -f
 ```
 
-Edit `.env` and set your database connection:
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/referral_affiliate_hub?schema=public"
-PORT=3001
-```
-
-4. Run database migrations:
+5. **Stop the stack**
 ```bash
-npm run prisma:migrate
+docker compose down
 ```
 
-5. Generate Prisma client:
-```bash
-npm run prisma:generate
-```
+### Manual Setup (Without Docker)
 
-6. Start the backend:
-```bash
-npm run start:dev
-```
-
-The API will be available at `http://localhost:3001`
-API Documentation: `http://localhost:3001/api`
-
-### Frontend Setup
-
-1. Navigate to the frontend directory:
-```bash
-cd frontend
-```
-
-2. Install dependencies:
+1. **Install dependencies**
 ```bash
 npm install
 ```
 
-3. Configure environment variables:
+2. **Set up environment variables**
 ```bash
-cp .env.example .env
+# Backend
+cp backend/.env.example backend/.env
+# Edit backend/.env and set DATABASE_URL
+
+# Frontend
+cp frontend/.env.example frontend/.env
+# Edit frontend/.env and set NEXT_PUBLIC_API_URL
 ```
 
-Edit `.env`:
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3001
+3. **Set up database**
+```bash
+# Generate Prisma client
+npm run db:generate
+
+# Run migrations
+npm run db:migrate
+
+# Seed demo data
+npm run db:seed
 ```
 
-4. Start the development server:
+4. **Start development servers**
 ```bash
+# Start both backend and frontend
 npm run dev
+
+# Or start individually
+npm run dev:backend
+npm run dev:frontend
 ```
 
-The admin dashboard will be available at `http://localhost:3000`
+## 📝 Demo Data & Credentials
 
-## Usage Examples
+After running `db:seed`, you'll have:
 
-### 1. Subscription SaaS Referrals
+### Programs
+1. **SaaS Referral Program** - 20% commission
+2. **E-commerce Affiliate Program** - Tiered (5%, 8%, 10%)
+3. **Fixed Bounty Program** - $50 per signup
 
-**Scenario**: You run a SaaS with monthly subscriptions at $99/month. You want to give existing customers 20% of the first payment when they refer new customers.
+### Demo Referral Codes
+- `JOHN2024` - SaaS program, 20% commission
+- `SARAH2024` - SaaS program, 20% commission
+- `TECHBLOG` - E-commerce, tiered commission
+- `ACME2024` - Fixed $50 bounty
 
-#### Step 1: Create a Program
+### Sample Data
+- 4 partners with different payout methods
+- 8 conversion events
+- 3 calculated payouts in different statuses
 
+## 🎬 Example: Complete Vertical Slice
+
+Here's a complete flow from creating a program to receiving a payout:
+
+### 1. Create a Program
 ```bash
 POST http://localhost:3001/programs
 Content-Type: application/json
@@ -159,18 +169,15 @@ Content-Type: application/json
 }
 ```
 
-Or use the Admin UI: Go to `/programs` → "Create Program"
+**Response**: Returns program with ID
 
-#### Step 2: Add Partners
-
-Partners are your existing customers who will refer new users.
-
+### 2. Add a Partner
 ```bash
 POST http://localhost:3001/partners
 Content-Type: application/json
 
 {
-  "programId": "program-uuid-here",
+  "programId": "<program-id-from-step-1>",
   "name": "John Doe",
   "contactEmail": "john@example.com",
   "payoutMethodJson": {
@@ -180,200 +187,128 @@ Content-Type: application/json
 }
 ```
 
-Or use the Admin UI: Go to `/programs/[id]` → "Add Partner"
+**Response**: Returns partner with ID
 
-#### Step 3: Generate Referral Links
-
+### 3. Create Referral Link
 ```bash
 POST http://localhost:3001/referral-links
 Content-Type: application/json
 
 {
-  "partnerId": "partner-uuid-here",
+  "partnerId": "<partner-id-from-step-2>",
   "code": "JOHN2024",
   "urlSlug": "john-doe"
 }
 ```
 
-Share with partner:
-- Query param: `https://yoursite.com/signup?ref=JOHN2024`
-- Short URL: `https://yoursite.com/r/john-doe`
+**Response**: Returns referral link
 
-#### Step 4: Track Attribution
-
-When a user visits with the referral link, call:
-
+### 4. Track Attribution
+When a user visits `?ref=JOHN2024`:
 ```bash
 GET http://localhost:3001/tracking/attribution?ref=JOHN2024
 ```
 
-Store the returned `partnerId` in your session/cookie.
+**Response**: Partner and program information
 
-#### Step 5: Record Conversion
-
-When the referred user completes signup and pays $99:
-
+### 5. Record Conversion
+When the referred user makes a purchase:
 ```bash
 POST http://localhost:3001/tracking/conversion
 Content-Type: application/json
 
 {
-  "partnerId": "partner-uuid-here",
+  "partnerId": "<partner-id>",
   "amount": 99.00,
-  "referredUserId": "new-user-id",
+  "referredUserId": "user_001",
   "metaJson": {
-    "plan": "pro",
-    "billingCycle": "monthly"
+    "plan": "pro"
   }
 }
 ```
 
-#### Step 6: Calculate Payout
+**Response**: Conversion recorded
 
-At the end of the month, calculate payouts:
-
+### 6. Calculate Payout
 ```bash
 POST http://localhost:3001/payouts/calculate
 Content-Type: application/json
 
 {
-  "partnerId": "partner-uuid-here",
+  "partnerId": "<partner-id>",
   "periodStart": "2024-01-01T00:00:00Z",
   "periodEnd": "2024-01-31T23:59:59Z"
 }
 ```
 
-This will calculate: $99 × 20% = $19.80 payout
+**Response**: Payout of $19.80 (99 × 20%)
 
-Or use the Admin UI: Go to `/partners/[id]` → "Calculate Payout"
+### 7. View in Dashboard
 
-### 2. E-commerce Affiliate Program
+Visit `http://localhost:3000/programs` to:
+- See all programs
+- View program details and partners
+- Check conversion stats
+- Manage payouts
 
-**Scenario**: You run an online store. Affiliates get a tiered commission based on sales volume.
-
-#### Step 1: Create Tiered Program
-
-```bash
-POST http://localhost:3001/programs
-Content-Type: application/json
-
-{
-  "name": "E-commerce Affiliate Program",
-  "type": "AFFILIATE",
-  "configJson": {
-    "tiers": [
-      {
-        "minAmount": 0,
-        "percentage": 5
-      },
-      {
-        "minAmount": 500,
-        "percentage": 8
-      },
-      {
-        "minAmount": 1000,
-        "percentage": 10
-      }
-    ]
-  }
-}
-```
-
-**How it works**:
-- Sales $0-499: 5% commission
-- Sales $500-999: 8% commission
-- Sales $1000+: 10% commission
-
-#### Step 2: Add Affiliate Partner
+## 🧪 Testing
 
 ```bash
-POST http://localhost:3001/partners
-Content-Type: application/json
+# Run all tests
+npm test
 
-{
-  "programId": "program-uuid-here",
-  "name": "TechBlogger Pro",
-  "contactEmail": "blogger@example.com",
-  "payoutMethodJson": {
-    "type": "paypal",
-    "accountId": "blogger@paypal.com"
-  }
-}
+# Run tests in watch mode
+npm run test:watch --workspace=backend
+
+# Run tests with coverage
+npm run test:cov --workspace=backend
 ```
 
-#### Step 3: Create Affiliate Link
+### Test Coverage
 
+- ✅ Payout calculation logic (percentage, fixed, tiered)
+- ✅ Program CRUD operations
+- ✅ Partner management
+- ✅ Error handling and validation
+
+## 📜 Available Scripts
+
+### Root Level
 ```bash
-POST http://localhost:3001/referral-links
-Content-Type: application/json
-
-{
-  "partnerId": "partner-uuid-here",
-  "code": "TECHBLOG",
-  "urlSlug": "techblogger"
-}
+npm run dev              # Start both backend and frontend
+npm run build            # Build both applications
+npm run test             # Run backend tests
+npm run lint             # Lint all code
+npm run db:migrate       # Run database migrations
+npm run db:seed          # Seed demo data
+npm run docker:up        # Start Docker containers
+npm run docker:down      # Stop Docker containers
+npm run setup            # Install deps, migrate, and seed
 ```
 
-#### Step 4: Track Product Purchases
-
-When a customer buys through the affiliate link:
-
+### Backend
 ```bash
-POST http://localhost:3001/tracking/conversion
-Content-Type: application/json
-
-{
-  "partnerId": "partner-uuid-here",
-  "amount": 250.00,
-  "referredUserId": "customer-123",
-  "metaJson": {
-    "orderId": "ORD-456",
-    "products": ["Product A", "Product B"]
-  }
-}
+npm run dev              # Start development server
+npm run build            # Build for production
+npm run start            # Start production server
+npm test                 # Run tests
+npm run lint             # Lint code
+npm run db:generate      # Generate Prisma client
+npm run db:migrate       # Run migrations
+npm run db:seed          # Seed database
+npm run db:studio        # Open Prisma Studio
+npm run db:reset         # Reset database
 ```
 
-#### Step 5: Monthly Payout Calculation
-
-If the affiliate generated 3 sales: $250, $400, $600 = $1,250 total:
-
+### Frontend
 ```bash
-POST http://localhost:3001/payouts/calculate
-Content-Type: application/json
-
-{
-  "partnerId": "partner-uuid-here",
-  "periodStart": "2024-01-01T00:00:00Z",
-  "periodEnd": "2024-01-31T23:59:59Z"
-}
+npm run dev              # Start development server
+npm run build            # Build for production
+npm run start            # Start production server
+npm run lint             # Lint code
 ```
 
-**Calculation**:
-- $250: 5% tier = $12.50
-- $400: 5% tier = $20.00
-- $600: 8% tier (crossed $500) = $48.00
-- **Total payout**: $80.50
-
-### 3. Fixed Bounty Referrals
-
-**Scenario**: Pay $50 for every qualified signup, regardless of purchase amount.
-
-```bash
-POST http://localhost:3001/programs
-Content-Type: application/json
-
-{
-  "name": "Fixed Bounty Program",
-  "type": "REFERRAL",
-  "configJson": {
-    "fixedBounty": 50
-  }
-}
-```
-
-Each conversion will result in exactly $50 payout.
-
-## API Endpoints
+## 🔌 API Endpoints
 
 ### Programs
 - `GET /programs` - List all programs
@@ -395,34 +330,35 @@ Each conversion will result in exactly $50 payout.
 - `DELETE /referral-links/:id` - Delete link
 
 ### Tracking
-- `GET /tracking/attribution?ref=CODE` - Track by referral code
+- `GET /tracking/attribution?ref=CODE` - Track by code
 - `GET /tracking/r/:slug` - Track by URL slug
 - `POST /tracking/conversion` - Record conversion
 
 ### Conversions
 - `GET /conversions` - List all conversions
-- `GET /conversions/:id` - Get conversion details
-- `GET /conversions/stats/:partnerId` - Get partner stats
+- `GET /conversions/stats/:partnerId` - Get stats
 
 ### Payouts
 - `GET /payouts` - List all payouts
-- `POST /payouts/calculate` - Calculate payout for period
+- `POST /payouts/calculate` - Calculate payout
 - `GET /payouts/:id` - Get payout details
 - `PATCH /payouts/:id` - Update payout status
 
-## Payout Configuration Options
+Full API documentation: http://localhost:3001/api
 
-### Percentage-based
+## 🎨 Payout Configuration Examples
+
+### Percentage-Based
 ```json
 {
-  "percentage": 20
+  "percentage": 20  // 20% of conversion amount
 }
 ```
 
 ### Fixed Bounty
 ```json
 {
-  "fixedBounty": 50
+  "fixedBounty": 50  // $50 per conversion
 }
 ```
 
@@ -430,174 +366,101 @@ Each conversion will result in exactly $50 payout.
 ```json
 {
   "tiers": [
-    { "minAmount": 0, "percentage": 5 },
-    { "minAmount": 500, "percentage": 8 },
-    { "minAmount": 1000, "fixedBounty": 100 }
+    { "minAmount": 0, "percentage": 5 },      // 5% for $0-499
+    { "minAmount": 500, "percentage": 8 },    // 8% for $500-999
+    { "minAmount": 1000, "percentage": 10 }   // 10% for $1000+
   ]
 }
 ```
 
-### Hybrid (Percentage + Fixed)
-```json
-{
-  "percentage": 10,
-  "fixedBounty": 25
-}
+## 🏗️ Project Structure
+
 ```
-This will give both 10% of sale + $25 fixed bonus.
-
-## Integration Guide
-
-### 1. Frontend Integration
-
-Add referral tracking to your app:
-
-```typescript
-// When user visits with ?ref=CODE
-const ref = new URLSearchParams(window.location.search).get('ref');
-if (ref) {
-  const response = await fetch(
-    `http://localhost:3001/tracking/attribution?ref=${ref}`
-  );
-  const data = await response.json();
-
-  // Store partnerId in cookie/localStorage
-  localStorage.setItem('referralPartnerId', data.partner.id);
-}
-```
-
-### 2. Backend Integration
-
-When a conversion happens:
-
-```typescript
-const partnerId = getUserReferralPartner(userId);
-if (partnerId) {
-  await fetch('http://localhost:3001/tracking/conversion', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      partnerId,
-      amount: orderTotal,
-      referredUserId: userId,
-      metaJson: {
-        orderId: order.id,
-        // ... additional data
-      }
-    })
-  });
-}
+referral-affiliate-hub/
+├── backend/
+│   ├── prisma/
+│   │   ├── schema.prisma           # Database schema
+│   │   └── seed.ts                 # Seed script
+│   ├── src/
+│   │   ├── common/
+│   │   │   └── filters/            # Error handling
+│   │   ├── programs/               # Program management
+│   │   ├── partners/               # Partner management
+│   │   ├── referral-links/         # Link management
+│   │   ├── conversions/            # Conversion tracking
+│   │   ├── payouts/                # Payout calculation
+│   │   ├── tracking/               # Attribution API
+│   │   └── main.ts                 # Application entry
+│   ├── vitest.config.ts            # Test configuration
+│   └── Dockerfile
+├── frontend/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── programs/           # Programs UI
+│   │   │   ├── partners/           # Partners UI
+│   │   │   └── page.tsx            # Home page
+│   │   └── lib/
+│   │       └── api.ts              # API client
+│   └── Dockerfile
+├── docker-compose.yml              # Docker orchestration
+└── package.json                    # Monorepo scripts
 ```
 
-### 3. Webhook Integration (Stripe Example)
+## 🚢 Deployment
 
-```typescript
-// Handle Stripe webhook
-app.post('/webhooks/stripe', async (req, res) => {
-  const event = req.body;
-
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const partnerId = session.metadata.referralPartnerId;
-
-    if (partnerId) {
-      await fetch('http://localhost:3001/tracking/conversion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          partnerId,
-          amount: session.amount_total / 100,
-          referredUserId: session.customer,
-          metaJson: {
-            stripeSessionId: session.id
-          }
-        })
-      });
-    }
-  }
-
-  res.json({ received: true });
-});
-```
-
-## Admin Dashboard
-
-Access the admin dashboard at `http://localhost:3000`
-
-**Features**:
-- View all programs and their performance
-- Manage partners and their referral links
-- Calculate and track payouts
-- Update payout statuses (Pending → Processing → Paid)
-
-## Development
-
-### Running Tests
+### Docker Production Build
 
 ```bash
-# Backend
-cd backend
-npm test
+# Build images
+docker compose build
 
-# Frontend
-cd frontend
-npm test
+# Run in production mode
+docker compose up -d
 ```
 
-### Database Migrations
+### Environment Variables
 
-```bash
-cd backend
-
-# Create migration
-npm run prisma:migrate
-
-# Reset database
-npx prisma migrate reset
-
-# Open Prisma Studio
-npm run prisma:studio
+**Backend** (`.env`):
+```env
+DATABASE_URL=postgresql://user:password@host:5432/dbname
+PORT=3001
+NODE_ENV=production
 ```
 
-### API Documentation
-
-Start the backend and visit: `http://localhost:3001/api`
-
-## Production Deployment
-
-### Backend
-
-1. Set production environment variables
-2. Run migrations: `npm run prisma:migrate`
-3. Build: `npm run build`
-4. Start: `npm run start:prod`
-
-### Frontend
-
-1. Set `NEXT_PUBLIC_API_URL` to production API
-2. Build: `npm run build`
-3. Start: `npm start`
-
-### Docker (Optional)
-
-```bash
-# Build and run with docker-compose
-docker-compose up -d
+**Frontend** (`.env`):
+```env
+NEXT_PUBLIC_API_URL=https://api.yourdomain.com
 ```
 
-## Security Considerations
+## 🔮 Future Extensions
 
-- Always validate referral codes server-side
-- Implement rate limiting on conversion endpoints
-- Use authentication for admin endpoints
-- Sanitize user inputs
-- Use HTTPS in production
-- Store payout credentials securely (consider using encryption)
+- [ ] Authentication & authorization (JWT, OAuth)
+- [ ] Multi-currency support
+- [ ] Real-time notifications for conversions
+- [ ] Webhook support for external systems
+- [ ] Analytics dashboard with charts
+- [ ] Bulk operations for partners
+- [ ] CSV export for payouts
+- [ ] Email notifications for partners
+- [ ] Rate limiting and API keys
+- [ ] Stripe Connect integration for payouts
 
-## License
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Run `npm test` and `npm run lint`
+6. Submit a pull request
+
+## 📄 License
 
 MIT
 
-## Support
+## 🆘 Support
 
-For issues and questions, please open an issue on GitHub.
+For issues and questions:
+- Check API documentation: http://localhost:3001/api
+- Review test files for usage examples
+- Open an issue on GitHub

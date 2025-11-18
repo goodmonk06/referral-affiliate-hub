@@ -1,0 +1,98 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Program {
+  id              String            @id @default(uuid())
+  name            String
+  type            ProgramType       // referral or affiliate
+  configJson      Json              // Stores rules: { percentage?: number, fixedBounty?: number, tiers?: Array }
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  partners        Partner[]
+  conversionEvents ConversionEvent[]
+
+  @@map("programs")
+}
+
+model Partner {
+  id              String            @id @default(uuid())
+  programId       String
+  name            String
+  contactEmail    String
+  payoutMethodJson Json             // Stores payout details: { type: 'stripe|paypal|bank', accountId: string, ... }
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  program         Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  referralLinks   ReferralLink[]
+  conversionEvents ConversionEvent[]
+  payouts         Payout[]
+
+  @@map("partners")
+}
+
+model ReferralLink {
+  id              String            @id @default(uuid())
+  partnerId       String
+  code            String            @unique
+  urlSlug         String            @unique
+  createdAt       DateTime          @default(now())
+
+  partner         Partner           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@map("referral_links")
+}
+
+model ConversionEvent {
+  id              String            @id @default(uuid())
+  programId       String
+  partnerId       String
+  referredUserId  String?           // Optional user identifier
+  amount          Float
+  currency        String            @default("USD")
+  occurredAt      DateTime          @default(now())
+  metaJson        Json?             // Additional metadata about the conversion
+
+  program         Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  partner         Partner           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@map("conversion_events")
+}
+
+model Payout {
+  id              String            @id @default(uuid())
+  partnerId       String
+  periodStart     DateTime
+  periodEnd       DateTime
+  amount          Float
+  currency        String            @default("USD")
+  status          PayoutStatus      @default(PENDING)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  partner         Partner           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@map("payouts")
+}
+
+enum ProgramType {
+  REFERRAL
+  AFFILIATE
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
